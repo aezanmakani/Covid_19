@@ -1,0 +1,149 @@
+/*
+Cleaning Data in SQL
+*/
+
+DROP TABLE housing-398916.Nashville_Housing.Nashville_Housing_Data2
+
+CREATE TABLE housing-398916.Nashville_Housing.Nashville_Housing_Data3 AS 
+(
+  SELECT *
+  FROM housing-398916.Nashville_Housing.Nashville_Housing_Data
+)
+
+SELECT *
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+
+-- Property Address Data
+
+SELECT *
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+WHERE PropertyAddress is null
+
+SELECT *
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+--WHERE ParcelID = "026 06 0A 038.00"
+ORDER BY ParcelID
+
+SELECT a.ParcelID, a.PropertyAddress,b.ParcelID, b.PropertyAddress, IFNULL(a.PropertyAddress,b.PropertyAddress) AS PropertyAddress2
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3 AS a
+JOIN housing-398916.Nashville_Housing.Nashville_Housing_Data3 AS b
+ ON a.ParcelID = b.ParcelID
+ AND a.UniqueID <> b.UniqueID
+WHERE a.PropertyAddress is null
+
+-- Update function doesnt work in Sandbo account
+
+UPDATE a
+SET PropertyAddress = IFNULL(a.PropertyAddress,b.PropertyAddress)
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3 AS a
+JOIN housing-398916.Nashville_Housing.Nashville_Housing_Data3 AS b
+ ON a.ParcelID = b.ParcelID
+ AND a.UniqueID <> b.UniqueID
+WHERE a.PropertyAddress is null
+
+
+-- Breaking out Address column (Address, City, State)
+
+-- Property Address (Address, City)
+
+SELECT PropertyAddress, SPLIT(PropertyAddress, ",") [offset(0)] as Address, SPLIT(PropertyAddress, ",") [offset(1)] as City
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+
+SELECT *, SPLIT(PropertyAddress, ",") [offset(0)] as Property_Address, SPLIT(PropertyAddress, ",") [offset(1)] as Property_City
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+
+/*
+ALTER TABLE Nashville_Housing.Nashville_Housing_Data3
+ADD COLUMN Property_Address STRING
+
+UPDATE Nashville_Housing.Nashville_Housing_Data3
+SET Property_Address = SPLIT(PropertyAddress, ",") [offset(0)]
+
+You can add and update other new columns viz. Property_City
+
+*/
+
+-- Owner Address (Address, City, State)
+
+SELECT OwnerAddress, SPLIT(OwnerAddress, ",") [Offset(0)] as Owner_Address, SPLIT(OwnerAddress, ",") [Offset(1)] as Owner_City, SPLIT(OwnerAddress, ",") [Offset(2)] as Owner_State
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+
+
+
+SELECT *, SPLIT(OwnerAddress, ",") [Offset(0)] as Owner_Address, SPLIT(OwnerAddress, ",") [Offset(1)] as Owner_City, SPLIT(OwnerAddress, ",") [Offset(2)] as Owner_State
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+
+/*
+ALTER TABLE Nashville_Housing.Nashville_Housing_Data3
+ADD COLUMN Owner_Address STRING
+
+UPDATE Nashville_Housing.Nashville_Housing_Data3
+SET Owner_Address = SPLIT(OwnerAddress, ",") [Offset(0)]
+
+You can add and update other new columns viz. Owner_City and Owner_State
+
+*/
+
+
+
+-- Change info in Sold As Vacant column to make it consistent 
+
+SELECT DISTINCT(SoldAsVacant), COUNT(SoldAsVacant) AS Count
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+GROUP BY SoldAsVacant
+ORDER BY Count
+
+
+SELECT SoldAsVacant,
+CASE WHEN SoldAsVacant = "Y" THEN "Yes"
+     WHEN SoldAsVacant = "N" THEN "No"
+     ELSE SoldAsVacant
+     END AS Sold_As_Vacant
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+
+UPDATE Nashville_Housing_Data3
+SET SoldAsVacant = CASE WHEN SoldAsVacant = "Y" THEN "Yes"
+     WHEN SoldAsVacant = "N" THEN "No"
+     ELSE SoldAsVacant
+     END
+
+
+-- Remove Duplicates (Not a standard practice to delete duplicates)
+
+
+WITH Duplicate_Data AS (
+SELECT *, ROW_NUMBER() OVER (
+  PARTITION BY ParcelID, PropertyAddress, SaleDate, SalePrice, LegalReference
+  ORDER BY UniqueID) AS Row_Num
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+)
+
+SELECT * -- You can delete the duplicate rows by replacing the SELECT command with DELETE
+FROM Duplicate_Data
+WHERE Row_Num > 1 -- There are 103 duplicate rows in the data set
+
+
+
+
+-- Deleting unused columns
+
+
+SELECT *
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+
+
+CREATE TABLE housing-398916.Nashville_Housing.Temp_Table AS (
+  SELECT *
+FROM housing-398916.Nashville_Housing.Nashville_Housing_Data3
+)
+
+SELECT *
+FROM housing-398916.Nashville_Housing.Temp_Table
+
+ALTER TABLE Nashville_Housing.Temp_Table
+ADD COLUMN City STRING
+
+ALTER TABLE Nashville_Housing.Temp_Table
+DROP COLUMN City
+
+DROP TABLE housing-398916.Nashville_Housing.Temp_Table
