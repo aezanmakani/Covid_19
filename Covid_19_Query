@@ -1,0 +1,163 @@
+-- View the data sets
+
+SELECT *
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+ORDER BY 3,4
+LIMIT 1000
+
+SELECT *
+FROM `covid-19-398619.CVID_19_Data.Covid_Vaccinations`
+ORDER BY 3,4
+LIMIT 1000
+
+-- Select data that we will be using
+
+SELECT location, date, total_cases, total_deaths,new_cases, population
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+ORDER BY 1,2
+
+-- Total Cases VS Total Deaths 
+
+SELECT location, date, total_cases, total_deaths, (total_deaths/total_cases)*100 AS Death_Percentage
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+WHERE location like "Canada"
+ORDER BY 1,2
+
+-- Total Cases VS Population
+
+SELECT location, date, total_cases, population, (total_cases/population)*100 AS Case_Percentage
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+WHERE location like "Canada"
+ORDER BY 1,2
+
+-- Countries with highest infection rate
+
+SELECT location, MAX(total_cases) AS Max_Cases, population, MAX((total_cases/population))*100 AS Population_Percent_Infected
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+WHERE continent is not null
+GROUP BY location, population
+ORDER BY Population_Percent_Infected DESC
+
+-- Countries with highest infection rate (By Date)
+
+SELECT location, date, MAX(total_cases) AS Max_Cases, population, MAX((total_cases/population))*100 AS Population_Percent_Infected
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+WHERE continent is not null
+GROUP BY location, population, date
+ORDER BY Population_Percent_Infected DESC
+
+-- Countries with highest death rate
+
+SELECT location, population, MAX(total_deaths) AS Maximum_Deaths, MAX((total_deaths/population))*100 AS Population_Percent_Death
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+WHERE continent is not null
+GROUP BY location, population
+ORDER BY Maximum_Deaths desc
+
+-- Countries with highest deaths 
+
+SELECT location, SUM(new_deaths) AS Total_Deaths
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+WHERE continent is not null
+GROUP BY location
+ORDER BY 2 desc
+
+
+-- Continent with highest death rate (NOT ACCURATE)
+
+SELECT continent, MAX(total_deaths) AS Maximum_Deaths
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+WHERE continent is not null
+GROUP BY continent
+ORDER BY Maximum_Deaths desc
+
+-- Continent with highest death rate (ACCURATE)
+
+SELECT location, SUM(new_deaths) AS Total_Deaths
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+WHERE continent is null
+ AND location <> "World"
+ AND location <> "High income"
+ AND location <> "Upper middle income"
+ AND location <> "Lower middle income"
+ AND location <> "Low income"
+ AND location <> "European Union"
+GROUP BY location
+ORDER BY Total_Deaths desc
+
+-- Global Numbers 
+
+SELECT date, SUM(new_cases) AS Total_Cases, SUM(new_deaths) AS Total_Deaths, SUM(new_deaths)/NULLIF(SUM(new_cases),0)*100 AS Death_Percent
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+WHERE continent is not null
+GROUP BY date
+ORDER BY 1,2
+
+
+SELECT SUM(new_cases) AS Total_Cases, SUM(new_deaths) AS Total_Deaths, SUM(new_deaths)/NULLIF(SUM(new_cases),0)*100 AS Death_Percent
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths`
+WHERE continent is not null
+--GROUP BY date
+ORDER BY 1,2
+
+-- Join two tables
+
+SELECT *
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths` AS dea
+JOIN `covid-19-398619.CVID_19_Data.Covid_Vaccinations` AS vac
+ ON dea.location = vac.location
+ AND dea.date = vac.date
+ORDER BY 4
+
+-- Total Population VS Total Vaccinations
+-- Temp Table
+WITH pop_vac AS (
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(vac.new_vaccinations) OVER
+(PARTITION BY dea.location ORDER BY dea.location, dea.date) AS Rolling_Vaccinations
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths` AS dea
+JOIN `covid-19-398619.CVID_19_Data.Covid_Vaccinations` AS vac
+ ON dea.location = vac.location
+ AND dea.date = vac.date
+WHERE dea.continent is not null
+)
+SELECT *, (Rolling_Vaccinations/population)*100 AS Rolling_Percent
+FROM pop_vac
+
+-- Create Table
+
+CREATE TABLE CVID_19_Data.pop_vac2 AS (
+WITH pop_vac AS (
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(vac.new_vaccinations) OVER
+(PARTITION BY dea.location ORDER BY dea.location, dea.date) AS Rolling_Vaccinations
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths` AS dea
+JOIN `covid-19-398619.CVID_19_Data.Covid_Vaccinations` AS vac
+ ON dea.location = vac.location
+ AND dea.date = vac.date
+WHERE dea.continent is not null
+)
+SELECT *, (Rolling_Vaccinations/population)*100 AS Rolling_Percent
+FROM pop_vac
+)
+
+-- Updated Table
+
+CREATE TABLE CVID_19_Data.pop_vac AS 
+(
+  SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(vac.new_vaccinations) OVER
+(PARTITION BY dea.location ORDER BY dea.location, dea.date) AS Rolling_Vaccinations
+FROM `covid-19-398619.CVID_19_Data.Covid_Deaths` AS dea
+JOIN `covid-19-398619.CVID_19_Data.Covid_Vaccinations` AS vac
+ ON dea.location = vac.location
+ AND dea.date = vac.date
+WHERE dea.continent is not null
+)
+
+SELECT *
+FROM `covid-19-398619.CVID_19_Data.pop_vac`
+
+
+
+
+
+
+
